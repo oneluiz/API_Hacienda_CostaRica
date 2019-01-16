@@ -1109,11 +1109,12 @@ class Hacienda extends REST_Controller {
         <NumeroConsecutivoReceptor>' . $numeroConsecutivoReceptor . '</NumeroConsecutivoReceptor>';
     
         $xmlString .= '</MensajeReceptor>';
+
         $arrayResp = array(
             "clave" => $clave,
             "xml"   => base64_encode($xmlString)
         );
-    
+
         $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
     }
 }
