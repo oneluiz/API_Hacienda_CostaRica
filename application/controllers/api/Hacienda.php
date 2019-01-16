@@ -1072,4 +1072,48 @@ class Hacienda extends REST_Controller {
 
         $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
     }
+
+    function mr_post()
+    {
+        $clave                          = $this->post("clave");                                      // d{50,50}
+        // Datos vendedor = emisor
+        $numeroCedulaEmisor             = $this->post("numero_cedula_emisor");                       // d{12,12} cedula fisica,juridica,NITE,DIMEX
+        $numeroCedulaEmisor             = str_pad($numeroCedulaEmisor, 12, "0", STR_PAD_LEFT);
+    
+        // Datos mensaje receptor
+        $fechaEmisionDoc                = $this->post("fecha_emision_doc");                          // fecha de emision de la confirmacion
+        $mensaje                        = $this->post("mensaje");                                    // 1 - Aceptado, 2 - Aceptado Parcialmente, 3 - Rechazado
+        $detalleMensaje                 = $this->post("detalle_mensaje");
+        $montoTotalImpuesto             = $this->post("monto_total_impuesto");                       // d18,5 opcional /obligatorio si comprobante tenga impuesto
+        $totalFactura                   = $this->post("total_factura");                              // d18,5
+        $numeroConsecutivoReceptor      = $this->post("numero_consecutivo_receptor");                // d{20,20} numeracion consecutiva de los mensajes de confirmacion
+    
+        // Datos comprador = receptor
+        $numeroCedulaReceptor           = $this->post("numero_cedula_receptor");                     // d{12,12}cedula fisica, juridica, NITE, DIMEX del comprador
+        $numeroCedulaReceptor           = str_pad($numeroCedulaReceptor, 12, "0", STR_PAD_LEFT);
+    
+        $xmlString = '<?xml version="1.0" encoding="utf-8"?>
+        <MensajeReceptor xmlns="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/mensajeReceptor" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/mensajeReceptor MensajeReceptor_4.2.xsd">
+        <Clave>' . $clave . '</Clave>
+        <NumeroCedulaEmisor>' . $numeroCedulaEmisor . '</NumeroCedulaEmisor>
+        <FechaEmisionDoc>' . $fechaEmisionDoc . '</FechaEmisionDoc>
+        <Mensaje>' . $mensaje . '</Mensaje>';
+        if (!empty($detalleMensaje))
+            $xmlString .= '<DetalleMensaje>' . $detalleMensaje . '</DetalleMensaje>';
+    
+        if (!empty($montoTotalImpuesto))
+            $xmlString .= '<MontoTotalImpuesto>' . $montoTotalImpuesto . '</MontoTotalImpuesto>';
+    
+        $xmlString .= '<TotalFactura>' . $totalFactura . '</TotalFactura>
+        <NumeroCedulaReceptor>' . $numeroCedulaReceptor . '</NumeroCedulaReceptor>
+        <NumeroConsecutivoReceptor>' . $numeroConsecutivoReceptor . '</NumeroConsecutivoReceptor>';
+    
+        $xmlString .= '</MensajeReceptor>';
+        $arrayResp = array(
+            "clave" => $clave,
+            "xml"   => base64_encode($xmlString)
+        );
+    
+        $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+    }
 }
