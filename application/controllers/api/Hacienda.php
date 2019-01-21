@@ -21,18 +21,94 @@ require APPPATH . 'libraries/Format.php';
  */
 class Hacienda extends REST_Controller {
 
-    function __construct()
+    public function __construct()
     {
         // Construct the parent class
         parent::__construct();
 
         // Configure limits on our controller methods
         // Ensure you have created the 'limits' table and enabled 'limits' within application/config/rest.php
-        $this->methods['users_get']['limit'] = 500; // 500 requests per hour per user/key
-        $this->methods['users_post']['limit'] = 100; // 100 requests per hour per user/key
-        $this->methods['users_delete']['limit'] = 50; // 50 requests per hour per user/key
+        //$this->methods['users_get']['limit'] = 500; // 500 requests per hour per user/key
+        //$this->methods['users_post']['limit'] = 100; // 100 requests per hour per user/key
+        //$this->methods['users_delete']['limit'] = 50; // 50 requests per hour per user/key
+    }
+    
+    public function index_get()
+    {
+      $this->set_response(array("ApiRest" => "ApiRest Hacienda Costa Rica"), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
     }
 
+    /**
+     * Consulta Estado Factura Hacienda
+     */
+    public function consulta_post()
+    {
+      $curl   = curl_init();
+      $client = $this->post("client_id");
+      $token  = $this->post('token');
+      $clave  = $this->post("clave");
+  
+      if ($clave == "" || strlen($clave) == 0){
+        $this->response(array("error" => "La clave no puede estar en blanco"), REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
+      }
+
+      if ($token == "" || strlen($token) == 0){
+        $this->response(array("error" => "El token no puede estar en blanco"), REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
+      }
+  
+      $url = null;
+
+      if ($client == 'api-stag'){
+        $url = "https://api.comprobanteselectronicos.go.cr/recepcion-sandbox/v1/recepcion/";
+      }else if ($client == 'api-prod'){
+        $url = "https://api.comprobanteselectronicos.go.cr/recepcion/v1/recepcion/";
+      }
+
+      if ($url == null){
+        $this->response(array("error" => "Ha ocurrido un error en el client_id."), REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
+      }
+
+  
+      curl_setopt_array($curl, array(
+        CURLOPT_URL             => $url . $clave,
+        CURLOPT_RETURNTRANSFER  => true,
+        CURLOPT_ENCODING        => "",
+        CURLOPT_MAXREDIRS       => 10,
+        CURLOPT_SSL_VERIFYHOST  => 0,
+        CURLOPT_SSL_VERIFYPEER  => 0,
+        CURLOPT_TIMEOUT         => 30,
+        CURLOPT_HTTP_VERSION    => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST   => "GET",
+        CURLOPT_HTTPHEADER      => array(
+          "Authorization: Bearer " . $token,
+          "Cache-Control: no-cache",
+          "Content-Type: application/x-www-form-urlencoded",
+          "Postman-Token: bf8dc171-5bb7-fa54-7416-56c5cda9bf5c"
+        ),
+      ));
+  
+      $response   = curl_exec($curl);
+      $status     = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+      $err        = curl_error($curl);
+
+      curl_close($curl);
+  
+      if ($err){
+        $arrayResp = array(
+          "Status" => $status,
+          "to" => $apiTo,
+          "text" => $err
+        );
+
+          $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+      }else{
+          $this->set_response(json_decode($response), REST_Controller::HTTP_OK);$this->response(NULL, REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
+      }
+    }
+
+    /**
+     * Genera XML Factura Electronica
+     */
     public function fe_post()
     {
         // Datos contribuyente
@@ -298,9 +374,12 @@ class Hacienda extends REST_Controller {
             "xml"   => base64_encode($xmlString)
         );
 
-        $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+        $this->set_response(array("resp" => $arrayResp), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
     }
 
+    /**
+     * Genera XML Nota Crédito
+     */
     public function nc_post()
     {
         // Datos contribuyente
@@ -583,6 +662,9 @@ class Hacienda extends REST_Controller {
         $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
     }
 
+    /**
+     * Genera XML Nota Débito
+     */
     public function nd_post()
     {
         // Datos contribuyente
@@ -862,9 +944,12 @@ class Hacienda extends REST_Controller {
             "xml" => base64_encode($xmlString)
         );
 
-        $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+        $this->set_response(array("resp" => $arrayResp), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
     }
 
+    /**
+     * Genera XML Ticket Electrónico
+     */
     function te_post()
     {
         // Datos contribuyente
@@ -1070,9 +1155,12 @@ class Hacienda extends REST_Controller {
             "xml" => base64_encode($xmlString)
         );
 
-        $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+        $this->set_response(array("resp" => $arrayResp), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
     }
 
+    /**
+     * Genera XML Mensaje Receptor
+     */
     function mr_post()
     {
         $clave                          = $this->post("clave");                                      // d{50,50}
@@ -1087,11 +1175,11 @@ class Hacienda extends REST_Controller {
         $montoTotalImpuesto             = $this->post("monto_total_impuesto");                       // d18,5 opcional /obligatorio si comprobante tenga impuesto
         $totalFactura                   = $this->post("total_factura");                              // d18,5
         $numeroConsecutivoReceptor      = $this->post("numero_consecutivo_receptor");                // d{20,20} numeracion consecutiva de los mensajes de confirmacion
-    
+
         // Datos comprador = receptor
         $numeroCedulaReceptor           = $this->post("numero_cedula_receptor");                     // d{12,12}cedula fisica, juridica, NITE, DIMEX del comprador
         $numeroCedulaReceptor           = str_pad($numeroCedulaReceptor, 12, "0", STR_PAD_LEFT);
-    
+
         $xmlString = '<?xml version="1.0" encoding="utf-8"?>
         <MensajeReceptor xmlns="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/mensajeReceptor" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/mensajeReceptor MensajeReceptor_4.2.xsd">
         <Clave>' . $clave . '</Clave>
@@ -1100,14 +1188,14 @@ class Hacienda extends REST_Controller {
         <Mensaje>' . $mensaje . '</Mensaje>';
         if (!empty($detalleMensaje))
             $xmlString .= '<DetalleMensaje>' . $detalleMensaje . '</DetalleMensaje>';
-    
+
         if (!empty($montoTotalImpuesto))
             $xmlString .= '<MontoTotalImpuesto>' . $montoTotalImpuesto . '</MontoTotalImpuesto>';
-    
+
         $xmlString .= '<TotalFactura>' . $totalFactura . '</TotalFactura>
         <NumeroCedulaReceptor>' . $numeroCedulaReceptor . '</NumeroCedulaReceptor>
         <NumeroConsecutivoReceptor>' . $numeroConsecutivoReceptor . '</NumeroConsecutivoReceptor>';
-    
+
         $xmlString .= '</MensajeReceptor>';
 
         $arrayResp = array(
@@ -1115,6 +1203,7 @@ class Hacienda extends REST_Controller {
             "xml"   => base64_encode($xmlString)
         );
 
-        $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+
+        $this->set_response(array("resp" => $arrayResp), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
     }
 }
