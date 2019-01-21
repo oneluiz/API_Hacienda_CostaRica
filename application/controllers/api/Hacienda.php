@@ -102,7 +102,7 @@ class Hacienda extends REST_Controller {
 
           $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
       }else{
-          $this->set_response(json_decode($response), REST_Controller::HTTP_OK);$this->response(NULL, REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
+          $this->set_response(json_decode($response), REST_Controller::HTTP_OK);
       }
     }
 
@@ -1205,5 +1205,102 @@ class Hacienda extends REST_Controller {
 
 
         $this->set_response(array("resp" => $arrayResp), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+    }
+ 
+    /**
+     * Genera Token Hacienda
+     */
+    public function token_post()
+    {
+        $client_id  = $this->post("client_id");
+        $grant_type = $this->post("grant_type");
+    
+        $url = ($client_id == 'api-stag' ? "https://idp.comprobanteselectronicos.go.cr/auth/realms/rut-stag/protocol/openid-connect/token" : ($client_id == 'api-prod' ? "https://idp.comprobanteselectronicos.go.cr/auth/realms/rut/protocol/openid-connect/token" : null));
+    
+        $data = array();
+    
+        // Get Data from Post
+        if ($grant_type == "password")
+        {
+          $client_secret  = $this->post("client_secret");
+          $username       = $this->post("username");
+          $password       = $this->post("password");
+
+          if ($client_id == ''){
+            $this->response(array("error" => "El parametro Client ID es requerido"), REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
+          }
+          else if ($grant_type == '')
+          {
+            $this->response(array("error" => "El parametro Grant Type es requerido"), REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
+          }
+          else if ($username == '')
+          {
+            $this->response(array("error" => "El parametro Username es requerido"), REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
+          }
+          else if ($password == '')
+          {
+            $this->response(array("error" => "El parametro Password es requerido"), REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
+          }
+  
+          $data = array(
+            'client_id'         => $client_id,
+            'client_secret'     => $client_secret,
+            'grant_type'        => $grant_type,
+            'username'          => $username,
+            'password'          => $password
+          );
+    
+        }
+        else if ($grant_type == "refresh_token")
+        {
+          $client_secret      = $this->post("client_secret");
+          $refresh_token      = $this->post("refresh_token");
+
+          if ($client_id == ''){
+            $this->response(array("error" => "El parametro Client ID es requerido"), REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
+          }
+          else if ($grant_type == '')
+          {
+            $this->response(array("error" => "El parametro Grant Type es requerido"), REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
+          }
+          else if ($refresh_token == '')
+          {
+            $this->response(array("error" => "El parametro Refresh Token es requerido"), REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
+          }
+
+          $data = array(
+            'client_id'     => $client_id,
+            'client_secret' => $client_secret,
+            'grant_type'    => $grant_type,
+            'refresh_token' => $refresh_token
+          );
+        }
+    
+        $curl = curl_init($url);
+        curl_setopt($curl, CURLOPT_HEADER, true);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_POST, true);
+        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($curl, CURLOPT_HEADER, 'Content-Type: application/x-www-form-urlencoded');
+        $data = http_build_query($data);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+    
+        $respuesta  = curl_exec($curl);
+        $status     = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $err        = json_decode(curl_error($curl));
+        curl_close($curl);
+
+        if ($err)
+        {
+          $arrayResp = array(
+            "Status"    => $status,
+            "text"      => $err
+          );
+          $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+        }
+        else{
+          $this->set_response(json_decode($respuesta), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+        }
     }
 }
