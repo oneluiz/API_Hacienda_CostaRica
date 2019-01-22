@@ -25,7 +25,7 @@ class Hacienda extends REST_Controller {
     {
         // Construct the parent class
         parent::__construct();
-
+        $this->load->helper('api_helper');
         // Configure limits on our controller methods
         // Ensure you have created the 'limits' table and enabled 'limits' within application/config/rest.php
         //$this->methods['users_get']['limit'] = 500; // 500 requests per hour per user/key
@@ -44,7 +44,7 @@ class Hacienda extends REST_Controller {
     public function consulta_post()
     {
       $curl   = curl_init();
-      $client = $this->post("client_id");
+      $client_id = $this->post("client_id");
       $token  = $this->post('token');
       $clave  = $this->post("clave");
   
@@ -55,14 +55,8 @@ class Hacienda extends REST_Controller {
       if ($token == "" || strlen($token) == 0){
         $this->response(array("error" => "El token no puede estar en blanco"), REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
       }
-  
-      $url = null;
 
-      if ($client == 'api-stag'){
-        $url = "https://api.comprobanteselectronicos.go.cr/recepcion-sandbox/v1/recepcion/";
-      }else if ($client == 'api-prod'){
-        $url = "https://api.comprobanteselectronicos.go.cr/recepcion/v1/recepcion/";
-      }
+      $url = cliente_consulta($client_id);
 
       if ($url == null){
         $this->response(array("error" => "Ha ocurrido un error en el client_id."), REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
@@ -1215,7 +1209,7 @@ class Hacienda extends REST_Controller {
         $client_id  = $this->post("client_id");
         $grant_type = $this->post("grant_type");
     
-        $url = ($client_id == 'api-stag' ? "https://idp.comprobanteselectronicos.go.cr/auth/realms/rut-stag/protocol/openid-connect/token" : ($client_id == 'api-prod' ? "https://idp.comprobanteselectronicos.go.cr/auth/realms/rut/protocol/openid-connect/token" : null));
+        $url = cliente_token($client_id);
     
         $data = array();
     
