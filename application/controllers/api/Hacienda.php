@@ -88,13 +88,13 @@ class Hacienda extends REST_Controller {
       curl_close($curl);
   
       if ($err){
-        $arrayResp = array(
+        $respuesta = array(
           "Status" => $status,
           "to" => $apiTo,
           "text" => $err
         );
 
-          $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+          $this->set_response($respuesta, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
       }else{
           $this->set_response(json_decode($response), REST_Controller::HTTP_OK);
       }
@@ -399,12 +399,12 @@ class Hacienda extends REST_Controller {
         // Genera XML
         $xml_string = $this->xml->getXml(false);
 
-        $arrayResp = array(
+        $respuesta = array(
             "clave" => $clave,
             "xml"   => base64_encode($xmlString)
         );
 
-        $this->set_response(array("resp" => $arrayResp), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+        $this->set_response(array("resp" => $respuesta), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
     }
 
     /**
@@ -719,12 +719,12 @@ class Hacienda extends REST_Controller {
         // Genera XML
         $xml_string = $this->xml->getXml(false);
 
-        $arrayResp = array(
+        $respuesta = array(
             "clave" => $clave,
             "xml"   => base64_encode($xml_string)
         );
     
-        $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+        $this->set_response($respuesta, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
     }
 
     /**
@@ -1040,12 +1040,12 @@ class Hacienda extends REST_Controller {
         // Genera XML
         $xml_string = $this->xml->getXml(false);
 
-        $arrayResp = array(
+        $respuesta = array(
             "clave" => $clave,
             "xml" => base64_encode($xml_string)
         );
 
-        $this->set_response(array("resp" => $arrayResp), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+        $this->set_response(array("resp" => $respuesta), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
     }
 
     /**
@@ -1281,12 +1281,12 @@ class Hacienda extends REST_Controller {
         // Genera XML
         $xml_string = $this->xml->getXml(false);
 
-        $arrayResp = array(
+        $respuesta = array(
             "clave" => $clave,
             "xml" => base64_encode($xmlString)
         );
 
-        $this->set_response(array("resp" => $arrayResp), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+        $this->set_response(array("resp" => $respuesta), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
     }
 
     /**
@@ -1345,13 +1345,12 @@ class Hacienda extends REST_Controller {
         // Genera XML
         $xml_string = $this->xml->getXml(false);
 
-        $arrayResp = array(
+        $respuesta = array(
             "clave" => $clave,
             "xml"   => base64_encode($xml_string)
         );
 
-
-        $this->set_response(array("resp" => $arrayResp), REST_Controller::HTTP_OK);
+        $this->set_response(array("resp" => $respuesta), REST_Controller::HTTP_OK);
     }
  
     /**
@@ -1440,11 +1439,11 @@ class Hacienda extends REST_Controller {
 
         if ($err)
         {
-          $arrayResp = array(
+          $respuesta = array(
             "Status"    => $status,
             "text"      => $err
           );
-          $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+          $this->set_response($respuesta, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
         }
         else{
           $this->set_response(json_decode($respuesta), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
