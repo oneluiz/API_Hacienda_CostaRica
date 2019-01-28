@@ -25,6 +25,7 @@ class Hacienda extends REST_Controller {
     {
         // Construct the parent class
         parent::__construct();
+        
         $this->load->helper('api_helper');
         // Configure limits on our controller methods
         // Ensure you have created the 'limits' table and enabled 'limits' within application/config/rest.php
@@ -76,8 +77,7 @@ class Hacienda extends REST_Controller {
         CURLOPT_HTTPHEADER      => array(
           "Authorization: Bearer " . $token,
           "Cache-Control: no-cache",
-          "Content-Type: application/x-www-form-urlencoded",
-          "Postman-Token: bf8dc171-5bb7-fa54-7416-56c5cda9bf5c"
+          "Content-Type: application/x-www-form-urlencoded"
         ),
       ));
   
@@ -165,204 +165,240 @@ class Hacienda extends REST_Controller {
         
         $detalles = json_decode($this->post("detalles"));
 
-        $xmlString = '<?xml version="1.0" encoding="utf-8"?>
-        <FacturaElectronica xmlns="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/facturaElectronica" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/facturaElectronica FacturaElectronica_V.4.2.xsd">
-            <Clave>' . $clave . '</Clave>
-            <NumeroConsecutivo>' . $consecutivo . '</NumeroConsecutivo>
-            <FechaEmision>' . $fechaEmision . '</FechaEmision>
-            <Emisor>
-                <Nombre>' . $emisorNombre . '</Nombre>
-                <Identificacion>
-                    <Tipo>' . $emisorTipoIdentif . '</Tipo>
-                    <Numero>' . $emisorNumIdentif . '</Numero>
-                </Identificacion>
-                <NombreComercial>' . $nombreComercial . '</NombreComercial>';
-    
+        // Carga la librería XML
+        $this->load->library('xml');
+
+        $this->xml->setRootName('FacturaElectronica');
+        $this->xml->setAttributes(array(
+            'xmlns'     =>  'https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/facturaElectronica',
+            'xmlns:ds'  =>  'http://www.w3.org/2000/09/xmldsig#',
+            'xmlns:vc'  =>  'http://www.w3.org/2007/XMLSchema-versioning',
+            'xmlns:xs'  =>  'http://www.w3.org/2001/XMLSchema'
+        ));
+
+        $this->xml->initiate();
+
+        $this->xml->addNode('Clave', $clave);
+        $this->xml->addNode('NumeroConsecutivo', $consecutivo);
+        $this->xml->addNode('FechaEmision', $fechaEmision);
+        /* EMISOR INICIO */
+        $this->xml->startBranch('Emisor');
+        $this->xml->addNode('Nombre', $emisorNombre);
+        /* IDENTIFICACION INICIO */
+        $this->xml->startBranch('Identificacion');
+        $this->xml->addNode('Tipo', $emisorTipoIdentif);
+        $this->xml->addNode('Numero', $emisorNumIdentif);
+        $this->xml->endBranch();
+        /* IDENTIFICACION FIN */
+
+        $this->xml->addNode('NombreComercial', $nombreComercial);
+
         if ($emisorProv != '' && $emisorCanton != '' && $emisorDistrito != '' && $emisorOtrasSenas != '')
         {
-            $xmlString .= '
-            <Ubicacion>
-                <Provincia>' . $emisorProv . '</Provincia>
-                <Canton>' . $emisorCanton . '</Canton>
-                <Distrito>' . $emisorDistrito . '</Distrito>';
-            if ($emisorBarrio != '')
-                $xmlString .= '<Barrio>' . $emisorBarrio . '</Barrio>';
-            $xmlString .= '
-                    <OtrasSenas>' . $emisorOtrasSenas . '</OtrasSenas>
-                </Ubicacion>';
+            /* UBICACION INICIO */
+            $this->xml->startBranch('Ubicacion');
+            $this->xml->addNode('Provincia', $emisorProv);
+            $this->xml->addNode('Canton', $emisorCanton);
+            $this->xml->addNode('Distrito', $emisorDistrito);
+            if ($emisorBarrio != ''){
+                $this->xml->addNode('Barrio', $emisorBarrio);
+            }
+            $this->xml->addNode('OtrasSenas', $emisorOtrasSenas);
+            $this->xml->endBranch();
+            /* UBICACION FIN */
         }
-    
+
         if ($emisorCodPaisTel != '' && $emisorTel != '')
         {
-            $xmlString .= '
-                <Telefono>
-                    <CodigoPais>' . $emisorCodPaisTel . '</CodigoPais>
-                    <NumTelefono>' . $emisorTel . '</NumTelefono>
-                </Telefono>';
+            /* TELEFONO INICIO */
+            $this->xml->startBranch('Telefono');
+            $this->xml->addNode('CodigoPais', $emisorCodPaisTel);
+            $this->xml->addNode('NumTelefono', $emisorTel);
+            $this->xml->endBranch();
+            /* TELEFONO FIN */
         }
-    
+
         if ($emisorCodPaisFax != '' && $emisorFax != '')
         {
-            $xmlString .= '
-                <Fax>
-                    <CodigoPais>' . $emisorCodPaisFax . '</CodigoPais>
-                    <NumTelefono>' . $emisorFax . '</NumTelefono>
-                </Fax>';
+            /* FAX INICIO */
+            $this->xml->startBranch('Fax');
+            $this->xml->addNode('CodigoPais', $emisorCodPaisFax);
+            $this->xml->addNode('NumTelefono', $emisorFax);
+            $this->xml->endBranch();
+            /* FAX FIN */
         }
-    
-        $xmlString .= '<CorreoElectronico>' . $emisorEmail . '</CorreoElectronico>
-            </Emisor>';
+
+        $this->xml->addNode('CorreoElectronico', $emisorEmail);
+        $this->xml->endBranch();
+        /* EMISOR FIN */
     
         if ($omitir_receptor != 'true')
         {
-            $xmlString .= '<Receptor>
-                <Nombre>' . $receptorNombre . '</Nombre>';
-    
+            /* RECEPTOR INICIO */
+            $this->xml->startBranch('Receptor');
+            $this->xml->addNode('Nombre', $receptorNombre);
+
             if ($receptorTipoIdentif == '05')
             {
                 if ($receptorTipoIdentif != '' &&  $receptorNumIdentif != '')
                 {
-                    $xmlString .= '<IdentificacionExtranjero>'
-                            . $receptorNumIdentif 
-                            . ' </IdentificacionExtranjero>';
+                    $this->xml->addNode('IdentificacionExtranjero', $receptorNumIdentif);
                 }
             }
             else
             {
-                if ($receptorTipoIdentif != '' &&  $receptorNumIdentif != '')
+                if ($receptorTipoIdentif != '' && $receptorNumIdentif != '')
                 {
-                    $xmlString .= '<Identificacion>
-                        <Tipo>' . $receptorTipoIdentif . '</Tipo>
-                        <Numero>' . $receptorNumIdentif . '</Numero>
-                    </Identificacion>';
+                    /* IDENTIFICACION INICIO */
+                    $this->xml->startBranch('Identificacion');
+                    $this->xml->addNode('Tipo', $receptorTipoIdentif);
+                    $this->xml->addNode('Numero', $receptorNumIdentif);
+                    $this->xml->endBranch();
+                    /* IDENTIFICACION FIN */
                 }
     
                 if ($receptorProvincia != '' && $receptorCanton != '' && $receptorDistrito != '' && $receptorOtrasSenas != '')
                 {
-                    $xmlString .= '
-                        <Ubicacion>
-                            <Provincia>' . $receptorProvincia . '</Provincia>
-                            <Canton>' . $receptorCanton . '</Canton>
-                            <Distrito>' . $receptorDistrito . '</Distrito>';
-                    if ($receptorBarrio != '')
-                        $xmlString .= '<Barrio>' . $receptorBarrio . '</Barrio>';
-                    $xmlString .= '
-                            <OtrasSenas>' . $receptorOtrasSenas . '</OtrasSenas>
-                        </Ubicacion>';
+                    /* UBICACION INICIO */
+                    $this->xml->startBranch('Ubicacion');
+                    $this->xml->addNode('Provincia', $receptorProvincia);
+                    $this->xml->addNode('Canton', $receptorCanton);
+                    $this->xml->addNode('Distrito', $receptorDistrito);
+                    if ($receptorBarrio != ''){
+                        $this->xml->addNode('Barrio', $receptorBarrio);
+                    }
+                    $this->xml->addNode('OtrasSenas', $receptorOtrasSenas);
+                    $this->xml->endBranch();
+                    /* UBICACION FIN */
                 }
             }
     
             if ($receptorCodPaisTel != '' && $receptorTel != '')
             {
-                $xmlString .= '<Telefono>
-                                  <CodigoPais>' . $receptorCodPaisTel . '</CodigoPais>
-                                  <NumTelefono>' . $receptorTel . '</NumTelefono>
-                        </Telefono>';
+                /* TELEFONO INICIO */
+                $this->xml->startBranch('Telefono');
+                $this->xml->addNode('CodigoPais', $receptorCodPaisTel);
+                $this->xml->addNode('NumTelefono', $receptorTel);
+                $this->xml->endBranch();
+                /* TELEFONO FIN */
             }
     
             if ($receptorCodPaisFax != '' && $receptorFax != '')
             {
-                $xmlString .= '<Fax>
-                                  <CodigoPais>' . $receptorCodPaisFax . '</CodigoPais>
-                                 <NumTelefono>' . $receptorFax . '</NumTelefono>
-                        </Fax>';
+                /* FAX INICIO */
+                $this->xml->startBranch('Fax');
+                $this->xml->addNode('CodigoPais', $receptorCodPaisFax);
+                $this->xml->addNode('NumTelefono', $receptorFax);
+                $this->xml->endBranch();
+                /* FAX FIN */
             }
-    
-            if ($receptorEmail != '')
-                $xmlString .= '<CorreoElectronico>' . $receptorEmail . '</CorreoElectronico>';
-    
-            $xmlString .= '</Receptor>';
+            if ($receptorEmail != ''){
+                $this->xml->addNode('CorreoElectronico', $receptorEmail);
+            }
+            $this->xml->endBranch();
+            /* RECEPTOR FIN */
         }
     
-        $xmlString .= '
-            <CondicionVenta>' . $condVenta . '</CondicionVenta>
-            <PlazoCredito>' . $plazoCredito . '</PlazoCredito>
-            <MedioPago>' . $medioPago . '</MedioPago>
-            <DetalleServicio>';
-    
+        $this->xml->addNode('CondicionVenta', $condVenta);
+        $this->xml->addNode('PlazoCredito', $plazoCredito);
+        $this->xml->addNode('MedioPago', $medioPago);
+        $this->xml->startBranch('DetalleServicio');
         $l = 1;
         foreach ($detalles as $d)
         {
-            $xmlString .= '<LineaDetalle>
-                      <NumeroLinea>' . $l . '</NumeroLinea>
-                      <Cantidad>' . $d->cantidad . '</Cantidad>
-                      <UnidadMedida>' . $d->unidadMedida . '</UnidadMedida>
-                      <Detalle>' . $d->detalle . '</Detalle>
-                      <PrecioUnitario>' . $d->precioUnitario . '</PrecioUnitario>
-                      <MontoTotal>' . $d->montoTotal . '</MontoTotal>';
+            /* LINEA DETALLE INICIO */
+            $this->xml->startBranch('LineaDetalle');
+            $this->xml->addNode('NumeroLinea', $l);
+            $this->xml->addNode('Cantidad', $d->cantidad);
+            $this->xml->addNode('UnidadMedida', $d->unidadMedida);
+            $this->xml->addNode('Detalle', $d->detalle);
+            $this->xml->addNode('PrecioUnitario', $d->precioUnitario);
+            $this->xml->addNode('MontoTotal', $d->montoTotal);
+
+            if (isset($d->montoDescuento) && $d->montoDescuento != ""){
+              $this->xml->addNode('MontoDescuento', $d->montoDescuento);    
+            }
+
+            if (isset($d->naturalezaDescuento) && $d->naturalezaDescuento != ""){
+                $this->xml->addNode('NaturalezaDescuento', $d->naturalezaDescuento);
+            }
+            
+            $this->xml->addNode('SubTotal', $d->subtotal);
     
-            if (isset($d->montoDescuento) && $d->montoDescuento != "")
-                $xmlString .= '<MontoDescuento>' . $d->montoDescuento . '</MontoDescuento>';
-    
-            if (isset($d->naturalezaDescuento) && $d->naturalezaDescuento != "")
-                $xmlString .= '<NaturalezaDescuento>' . $d->naturalezaDescuento . '</NaturalezaDescuento>';
-    
-            $xmlString .= '<SubTotal>' . $d->subtotal . '</SubTotal>';
             if (isset($d->impuesto) && $d->impuesto != "")
             {
                 foreach ($d->impuesto as $i)
                 {
-                    $xmlString .= '<Impuesto>
-                    <Codigo>' . $i->codigo . '</Codigo>
-                    <Tarifa>' . $i->tarifa . '</Tarifa>
-                    <Monto>' . $i->monto . '</Monto>';
+                    /* IMPUESTOS INICIO */
+                    $this->xml->startBranch('Impuesto');
+                    $this->xml->addNode('Codigo', $i->codigo);
+                    $this->xml->addNode('Tarifa', $i->tarifa);
+                    $this->xml->addNode('Monto', $i->monto);
+    
                     if (isset($i->exoneracion) && $i->exoneracion != "")
                     {
-                        $xmlString .= '
-                        <Exoneracion>
-                            <TipoDocumento>' . $i->exoneracion->tipoDocumento . '</TipoDocumento>
-                            <NumeroDocumento>' . $i->exoneracion->numeroDocumento . '</NumeroDocumento>
-                            <NombreInstitucion>' . $i->exoneracion->nombreInstitucion . '</NombreInstitucion>
-                            <FechaEmision>' . $i->exoneracion->fechaEmision . '</FechaEmision>
-                            <MontoImpuesto>' . $i->exoneracion->montoImpuesto . '</MontoImpuesto>
-                            <PorcentajeCompra>' . $i->exoneracion->porcentajeCompra . '</PorcentajeCompra>
-                        </Exoneracion>';
+                        /* EXONERACIONES INICIO */
+                        $this->xml->startBranch('Exoneracion');
+                        $this->xml->addNode('TipoDocumento', $i->exoneracion->tipoDocumento);
+                        $this->xml->addNode('NumeroDocumento', $i->exoneracion->numeroDocumento);
+                        $this->xml->addNode('NombreInstitucion', $i->exoneracion->nombreInstitucion);
+                        $this->xml->addNode('FechaEmision', $i->exoneracion->fechaEmision);
+                        $this->xml->addNode('MontoImpuesto', $i->exoneracion->montoImpuesto);
+                        $this->xml->addNode('PorcentajeCompra', $i->exoneracion->porcentajeCompra);
+                        $this->xml->endBranch();
+                        /* EXONERACIONES FIN */
                     }
-    
-                    $xmlString .= '</Impuesto>';
+                    $this->xml->endBranch();
+                    /* IMPUESTOS FIN */
                 }
             }
-    
-            $xmlString .= '<MontoTotalLinea>' . $d->montoTotalLinea . '</MontoTotalLinea>';
-            $xmlString .= '</LineaDetalle>';
+            $this->xml->addNode('MontoTotalLinea', $d->montoTotalLinea);
+            $this->xml->endBranch();
             $l++;
+            /* LINEA DETALLE FIN */
         }
-    
-        $xmlString .= '</DetalleServicio>
-            <ResumenFactura>
-            <CodigoMoneda>' . $codMoneda . '</CodigoMoneda>
-            <TipoCambio>' . $tipoCambio . '</TipoCambio>
-            <TotalServGravados>' . $totalServGravados . '</TotalServGravados>
-            <TotalServExentos>' . $totalServExentos . '</TotalServExentos>
-            <TotalMercanciasGravadas>' . $totalMercGravadas . '</TotalMercanciasGravadas>
-            <TotalMercanciasExentas>' . $totalMercExentas . '</TotalMercanciasExentas>
-            <TotalGravado>' . $totalGravados . '</TotalGravado>
-            <TotalExento>' . $totalExentos . '</TotalExento>
-            <TotalVenta>' . $totalVentas . '</TotalVenta>
-            <TotalDescuentos>' . $totalDescuentos . '</TotalDescuentos>
-            <TotalVentaNeta>' . $totalVentasNeta . '</TotalVentaNeta>
-            <TotalImpuesto>' . $totalImp . '</TotalImpuesto>
-            <TotalComprobante>' . $totalComprobante . '</TotalComprobante>
-            </ResumenFactura>
-            <Normativa>
-            <NumeroResolucion>DGT-R-48-2016</NumeroResolucion>
-            <FechaResolucion>07-10-2016 08:00:00</FechaResolucion>
-            </Normativa>';
-    
+        $this->xml->endBranch();
+        /* DETALLE SERVICIO FIN */
+        /* RESUMEN FACTURA INICIO */
+        $this->xml->startBranch('ResumenFactura');
+        $this->xml->addNode('CodigoMoneda', $codMoneda);
+        $this->xml->addNode('TipoCambio', $tipoCambio);
+        $this->xml->addNode('TotalServGravados', $totalServGravados);
+        $this->xml->addNode('TotalServExentos', $totalServExentos);
+        $this->xml->addNode('TotalMercanciasGravadas', $totalMercGravadas);
+        $this->xml->addNode('TotalMercanciasExentas', $totalMercExentas);
+        $this->xml->addNode('TotalGravado', $totalGravados);
+        $this->xml->addNode('TotalExento', $totalExentos);
+        $this->xml->addNode('TotalVenta', $totalVentas);
+        $this->xml->addNode('TotalDescuentos', $totalDescuentos);
+        $this->xml->addNode('TotalVentaNeta', $totalVentasNeta);
+        $this->xml->addNode('TotalImpuesto', $totalImp);
+        $this->xml->addNode('TotalComprobante', $totalComprobante);
+        $this->xml->endBranch();
+        /* RESUMEN FACTURA FIN */
+        /* NORMATIVA INICIO */
+        $this->xml->startBranch('Normativa');
+        $this->xml->addNode('NumeroResolucion', 'DGT-R-48-2016');
+        $this->xml->addNode('FechaResolucion', '20-02-2017 08:05:00');
+        $this->xml->endBranch();
+        /* NORMATIVA FIN */
+
         if ($otros != '' && $otrosType != '')
         {
             $tipos = array("Otros", "OtroTexto", "OtroContenido");
+
             if (in_array($otrosType, $tipos))
             {
-                $xmlString .= '
-                    <Otros>
-                <' . $otrosType . '>' . $otros . '</' . $otrosType . '>
-                </Otros>';
+                /* OTROS INICIO */
+                $this->xml->startBranch('Otros');
+                $this->xml->addNode($otrosType, $otros);
+                $this->xml->endBranch();
+                /* OTROS FIN */
             }
         }
-    
-        $xmlString .= '
-        </FacturaElectronica>';
+        // Genera XML
+        $xml_string = $this->xml->getXml(false);
+
         $arrayResp = array(
             "clave" => $clave,
             "xml"   => base64_encode($xmlString)
@@ -380,7 +416,7 @@ class Hacienda extends REST_Controller {
         $clave                  = $this->post("clave");
         $consecutivo            = $this->post("consecutivo");
         $fechaEmision           = $this->post("fecha_emision");
-    
+
         // Datos emisor
         $emisorNombre           = $this->post("emisor_nombre");
         $emisorTipoIdentif      = $this->post("emisor_tipo_indetif");
@@ -440,217 +476,252 @@ class Hacienda extends REST_Controller {
     
         // Detalles de la compra
         $detalles               = json_decode($this->post("detalles"));
-    
-        $xmlString = '<?xml version = "1.0" encoding = "utf-8"?>
-        <NotaCreditoElectronica xmlns="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/notaCreditoElectronica" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/notaCreditoElectronica NotaCreditoElectronica_V4.2.xsd">
-        <Clave>' . $clave . '</Clave>
-        <NumeroConsecutivo>' . $consecutivo . '</NumeroConsecutivo>
-        <FechaEmision>' . $fechaEmision . '</FechaEmision>
-        <Emisor>
-            <Nombre>' . $emisorNombre . '</Nombre>
-            <Identificacion>
-                <Tipo>' . $emisorTipoIdentif . '</Tipo>
-                <Numero>' . $emisorNumIdentif . '</Numero>
-            </Identificacion>
-            <NombreComercial>' . $nombreComercial . '</NombreComercial>';
-    
-    
+
+        // Carga la librería XML
+        $this->load->library('xml');
+
+        $this->xml->setRootName('NotaCreditoElectronica');
+        $this->xml->setAttributes(array(
+            'xmlns'     => 'https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/notaCreditoElectronica',
+            'xmlns:xsd' => 'http://www.w3.org/2001/XMLSchema',
+            'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance'
+        ));
+
+        $this->xml->initiate();
+
+        $this->xml->addNode('Clave', $clave);
+        $this->xml->addNode('NumeroConsecutivo', $consecutivo);
+        $this->xml->addNode('FechaEmision', $fechaEmision);
+        /* EMISOR INICIO */
+        $this->xml->startBranch('Emisor');
+        $this->xml->addNode('Nombre', $emisorNombre);
+        /* IDENTIFICACION INICIO */
+        $this->xml->startBranch('Identificacion');
+        $this->xml->addNode('Tipo', $emisorTipoIdentif);
+        $this->xml->addNode('Numero', $emisorNumIdentif);
+        $this->xml->endBranch();
+        /* IDENTIFICACION FIN */
+
+        $this->xml->addNode('NombreComercial', $nombreComercial);
+
         if ($emisorProv != '' && $emisorCanton != '' && $emisorDistrito != '' && $emisorOtrasSenas != '')
         {
-            $xmlString .= '
-            <Ubicacion>
-                <Provincia>' . $emisorProv . '</Provincia>
-                <Canton>' . $emisorCanton . '</Canton>
-                <Distrito>' . $emisorDistrito . '</Distrito>';
-            if ($emisorBarrio != '')
-                $xmlString .= '<Barrio>' . $emisorBarrio . '</Barrio>';
-            $xmlString .= '
-                    <OtrasSenas>' . $emisorOtrasSenas . '</OtrasSenas>
-                </Ubicacion>';
+            /* UBICACION INICIO */
+            $this->xml->startBranch('Ubicacion');
+            $this->xml->addNode('Provincia', $emisorProv);
+            $this->xml->addNode('Canton', $emisorCanton);
+            $this->xml->addNode('Distrito', $emisorDistrito);
+            if ($emisorBarrio != ''){
+                $this->xml->addNode('Barrio', $emisorBarrio);
+            }
+            $this->xml->addNode('OtrasSenas', $emisorOtrasSenas);
+            $this->xml->endBranch();
+            /* UBICACION FIN */
         }
-    
+
         if ($emisorCodPaisTel != '' && $emisorTel != '')
         {
-            $xmlString .= '
-            <Telefono>
-                <CodigoPais>' . $emisorCodPaisTel . '</CodigoPais>
-                <NumTelefono>' . $emisorTel . '</NumTelefono>
-            </Telefono>';
+            /* TELEFONO INICIO */
+            $this->xml->startBranch('Telefono');
+            $this->xml->addNode('CodigoPais', $emisorCodPaisTel);
+            $this->xml->addNode('NumTelefono', $emisorTel);
+            $this->xml->endBranch();
+            /* TELEFONO FIN */
         }
-    
+
         if ($emisorCodPaisFax != '' && $emisorFax != '')
         {
-            $xmlString .= '
-            <Fax>
-                <CodigoPais>' . $emisorCodPaisFax . '</CodigoPais>
-                <NumTelefono>' . $emisorFax . '</NumTelefono>
-            </Fax>';
+            /* FAX INICIO */
+            $this->xml->startBranch('Fax');
+            $this->xml->addNode('CodigoPais', $emisorCodPaisFax);
+            $this->xml->addNode('NumTelefono', $emisorFax);
+            $this->xml->endBranch();
+            /* FAX FIN */
         }
-    
-    
-        $xmlString .= '<CorreoElectronico>' . $emisorEmail . '</CorreoElectronico>
-        </Emisor>';
+
+        $this->xml->addNode('CorreoElectronico', $emisorEmail);
+        $this->xml->endBranch();
+        /* EMISOR FIN */
     
         if ($omitir_receptor != 'true')
         {
-            $xmlString .= '<Receptor>
-                <Nombre>' . $receptorNombre . '</Nombre>';
-    
+            /* RECEPTOR INICIO */
+            $this->xml->startBranch('Receptor');
+            $this->xml->addNode('Nombre', $receptorNombre);
+
             if ($receptorTipoIdentif == '05')
             {
-                if ($receptorTipoIdentif != '' && $receptorNumIdentif != '')
+                if ($receptorTipoIdentif != '' &&  $receptorNumIdentif != '')
                 {
-                    $xmlString .= '<IdentificacionExtranjero>'
-                            . $receptorNumIdentif 
-                            . ' </IdentificacionExtranjero>';
+                    $this->xml->addNode('IdentificacionExtranjero', $receptorNumIdentif);
                 }
             }
             else
             {
                 if ($receptorTipoIdentif != '' && $receptorNumIdentif != '')
                 {
-                    $xmlString .= '<Identificacion>
-                        <Tipo>' . $receptorTipoIdentif . '</Tipo>
-                        <Numero>' . $receptorNumIdentif . '</Numero>
-                    </Identificacion>';
+                    /* IDENTIFICACION INICIO */
+                    $this->xml->startBranch('Identificacion');
+                    $this->xml->addNode('Tipo', $receptorTipoIdentif);
+                    $this->xml->addNode('Numero', $receptorNumIdentif);
+                    $this->xml->endBranch();
+                    /* IDENTIFICACION FIN */
                 }
     
                 if ($receptorProvincia != '' && $receptorCanton != '' && $receptorDistrito != '' && $receptorOtrasSenas != '')
                 {
-                    $xmlString .= '
-                        <Ubicacion>
-                            <Provincia>' . $receptorProvincia . '</Provincia>
-                            <Canton>' . $receptorCanton . '</Canton>
-                            <Distrito>' . $receptorDistrito . '</Distrito>';
-                    if ($receptorBarrio != '')
-                        $xmlString .= '<Barrio>' . $receptorBarrio . '</Barrio>';
-                    $xmlString .= '
-                            <OtrasSenas>' . $receptorOtrasSenas . '</OtrasSenas>
-                        </Ubicacion>';
+                    /* UBICACION INICIO */
+                    $this->xml->startBranch('Ubicacion');
+                    $this->xml->addNode('Provincia', $receptorProvincia);
+                    $this->xml->addNode('Canton', $receptorCanton);
+                    $this->xml->addNode('Distrito', $receptorDistrito);
+                    if ($receptorBarrio != ''){
+                        $this->xml->addNode('Barrio', $receptorBarrio);
+                    }
+                    $this->xml->addNode('OtrasSenas', $receptorOtrasSenas);
+                    $this->xml->endBranch();
+                    /* UBICACION FIN */
                 }
             }
     
             if ($receptorCodPaisTel != '' && $receptorTel != '')
             {
-                $xmlString .= '<Telefono>
-                                  <CodigoPais>' . $receptorCodPaisTel . '</CodigoPais>
-                                  <NumTelefono>' . $receptorTel . '</NumTelefono>
-                        </Telefono>';
+                /* TELEFONO INICIO */
+                $this->xml->startBranch('Telefono');
+                $this->xml->addNode('CodigoPais', $receptorCodPaisTel);
+                $this->xml->addNode('NumTelefono', $receptorTel);
+                $this->xml->endBranch();
+                /* TELEFONO FIN */
             }
     
             if ($receptorCodPaisFax != '' && $receptorFax != '')
             {
-                $xmlString .= '<Fax>
-                                  <CodigoPais>' . $receptorCodPaisFax . '</CodigoPais>
-                                 <NumTelefono>' . $receptorFax . '</NumTelefono>
-                        </Fax>';
+                /* FAX INICIO */
+                $this->xml->startBranch('Fax');
+                $this->xml->addNode('CodigoPais', $receptorCodPaisFax);
+                $this->xml->addNode('NumTelefono', $receptorFax);
+                $this->xml->endBranch();
+                /* FAX FIN */
             }
-    
-            if ($receptorEmail != '')
-                $xmlString .= '<CorreoElectronico>' . $receptorEmail . '</CorreoElectronico>';
-    
-            $xmlString .= '</Receptor>';
+            if ($receptorEmail != ''){
+                $this->xml->addNode('CorreoElectronico', $receptorEmail);
+            }
+            $this->xml->endBranch();
+            /* RECEPTOR FIN */
         }
     
-        $xmlString .= '
-        <CondicionVenta>' . $condVenta . '</CondicionVenta>
-        <PlazoCredito>' . $plazoCredito . '</PlazoCredito>
-        <MedioPago>' . $medioPago . '</MedioPago>
-        <DetalleServicio>';
-
+        $this->xml->addNode('CondicionVenta', $condVenta);
+        $this->xml->addNode('PlazoCredito', $plazoCredito);
+        $this->xml->addNode('MedioPago', $medioPago);
+        $this->xml->startBranch('DetalleServicio');
         $l = 1;
         foreach ($detalles as $d)
         {
-            $xmlString .= '<LineaDetalle>
-                <NumeroLinea>' . $l . '</NumeroLinea>
-                <Cantidad>' . $d->cantidad . '</Cantidad>
-                <UnidadMedida>' . $d->unidadMedida . '</UnidadMedida>
-                <Detalle>' . $d->detalle . '</Detalle>
-                <PrecioUnitario>' . $d->precioUnitario . '</PrecioUnitario>
-                <MontoTotal>' . $d->montoTotal . '</MontoTotal>';
-            if (isset($d->montoDescuento) && $d->montoDescuento != "")
-                $xmlString .= '<MontoDescuento>' . $d->montoDescuento . '</MontoDescuento>';
-    
-            if (isset($d->naturalezaDescuento) && $d->naturalezaDescuento != "")
-                $xmlString .= '<NaturalezaDescuento>' . $d->naturalezaDescuento . '</NaturalezaDescuento>';
-    
-            $xmlString .= '<SubTotal>' . $d->subtotal . '</SubTotal>';
+            /* LINEA DETALLE INICIO */
+            $this->xml->startBranch('LineaDetalle');
+            $this->xml->addNode('NumeroLinea', $l);
+            $this->xml->addNode('Cantidad', $d->cantidad);
+            $this->xml->addNode('UnidadMedida', $d->unidadMedida);
+            $this->xml->addNode('Detalle', $d->detalle);
+            $this->xml->addNode('PrecioUnitario', $d->precioUnitario);
+            $this->xml->addNode('MontoTotal', $d->montoTotal);
+
+            if (isset($d->montoDescuento) && $d->montoDescuento != ""){
+              $this->xml->addNode('MontoDescuento', $d->montoDescuento);    
+            }
+
+            if (isset($d->naturalezaDescuento) && $d->naturalezaDescuento != ""){
+                $this->xml->addNode('NaturalezaDescuento', $d->naturalezaDescuento);
+            }
+            
+            $this->xml->addNode('SubTotal', $d->subtotal);
     
             if (isset($d->impuesto) && $d->impuesto != "")
             {
                 foreach ($d->impuesto as $i)
                 {
-                    $xmlString .= '<Impuesto>
-                    <Codigo>' . $i->codigo . '</Codigo>
-                    <Tarifa>' . $i->tarifa . '</Tarifa>
-                    <Monto>' . $i->monto . '</Monto>';
+                    /* IMPUESTOS INICIO */
+                    $this->xml->startBranch('Impuesto');
+                    $this->xml->addNode('Codigo', $i->codigo);
+                    $this->xml->addNode('Tarifa', $i->tarifa);
+                    $this->xml->addNode('Monto', $i->monto);
     
                     if (isset($i->exoneracion) && $i->exoneracion != "")
                     {
-                        $xmlString .= '
-                        <Exoneracion>
-                            <TipoDocumento>' . $i->exoneracion->tipoDocumento . '</TipoDocumento>
-                            <NumeroDocumento>' . $i->exoneracion->numeroDocumento . '</NumeroDocumento>
-                            <NombreInstitucion>' . $i->exoneracion->nombreInstitucion . '</NombreInstitucion>
-                            <FechaEmision>' . $i->exoneracion->fechaEmision . '</FechaEmision>
-                            <MontoImpuesto>' . $i->exoneracion->montoImpuesto . '</MontoImpuesto>
-                            <PorcentajeCompra>' . $i->exoneracion->porcentajeCompra . '</PorcentajeCompra>
-                        </Exoneracion>';
+                        /* EXONERACIONES INICIO */
+                        $this->xml->startBranch('Exoneracion');
+                        $this->xml->addNode('TipoDocumento', $i->exoneracion->tipoDocumento);
+                        $this->xml->addNode('NumeroDocumento', $i->exoneracion->numeroDocumento);
+                        $this->xml->addNode('NombreInstitucion', $i->exoneracion->nombreInstitucion);
+                        $this->xml->addNode('FechaEmision', $i->exoneracion->fechaEmision);
+                        $this->xml->addNode('MontoImpuesto', $i->exoneracion->montoImpuesto);
+                        $this->xml->addNode('PorcentajeCompra', $i->exoneracion->porcentajeCompra);
+                        $this->xml->endBranch();
+                        /* EXONERACIONES FIN */
                     }
-    
-                    $xmlString .= '</Impuesto>';
+                    $this->xml->endBranch();
+                    /* IMPUESTOS FIN */
                 }
             }
-    
-            $xmlString .= '<MontoTotalLinea>' . $d->montoTotalLinea . '</MontoTotalLinea>';
-            $xmlString .= '</LineaDetalle>';
+            $this->xml->addNode('MontoTotalLinea', $d->montoTotalLinea);
+            $this->xml->endBranch();
             $l++;
+            /* LINEA DETALLE FIN */
         }
-    
-        $xmlString .= '</DetalleServicio>
-        <ResumenFactura>
-            <CodigoMoneda>' . $codMoneda . '</CodigoMoneda>
-            <TipoCambio>' . $tipoCambio . '</TipoCambio>
-            <TotalServGravados>' . $totalServGravados . '</TotalServGravados>
-            <TotalServExentos>' . $totalServExentos . '</TotalServExentos>
-            <TotalMercanciasGravadas>' . $totalMercGravadas . '</TotalMercanciasGravadas>
-            <TotalMercanciasExentas>' . $totalMercExentas . '</TotalMercanciasExentas>
-            <TotalGravado>' . $totalGravados . '</TotalGravado>
-            <TotalExento>' . $totalExentos . '</TotalExento>
-            <TotalVenta>' . $totalVentas . '</TotalVenta>
-            <TotalDescuentos>' . $totalDescuentos . '</TotalDescuentos>
-            <TotalVentaNeta>' . $totalVentasNeta . '</TotalVentaNeta>
-            <TotalImpuesto>' . $totalImp . '</TotalImpuesto>
-            <TotalComprobante>' . $totalComprobante . '</TotalComprobante>
-        </ResumenFactura>
-        <InformacionReferencia>
-            <TipoDoc>' . $infoRefeTipoDoc . '</TipoDoc>
-            <Numero>' . $infoRefeNumero . '</Numero>
-            <FechaEmision>' . $infoRefeFechaEmision . '</FechaEmision>
-            <Codigo>' . $infoRefeCodigo . '</Codigo>
-            <Razon>' . $infoRefeRazon . '</Razon>
-        </InformacionReferencia>
-        <Normativa>
-            <NumeroResolucion>DGT-R-48-2016</NumeroResolucion>
-            <FechaResolucion>07-10-2016 08:00:00</FechaResolucion>
-        </Normativa>';
+        $this->xml->endBranch();
+        /* DETALLE SERVICIO FIN */
+        /* RESUMEN FACTURA INICIO */
+        $this->xml->startBranch('ResumenFactura');
+        $this->xml->addNode('CodigoMoneda', $codMoneda);
+        $this->xml->addNode('TipoCambio', $tipoCambio);
+        $this->xml->addNode('TotalServGravados', $totalServGravados);
+        $this->xml->addNode('TotalServExentos', $totalServExentos);
+        $this->xml->addNode('TotalMercanciasGravadas', $totalMercGravadas);
+        $this->xml->addNode('TotalMercanciasExentas', $totalMercExentas);
+        $this->xml->addNode('TotalGravado', $totalGravados);
+        $this->xml->addNode('TotalExento', $totalExentos);
+        $this->xml->addNode('TotalVenta', $totalVentas);
+        $this->xml->addNode('TotalDescuentos', $totalDescuentos);
+        $this->xml->addNode('TotalVentaNeta', $totalVentasNeta);
+        $this->xml->addNode('TotalImpuesto', $totalImp);
+        $this->xml->addNode('TotalComprobante', $totalComprobante);
+        $this->xml->endBranch();
+        /* RESUMEN FACTURA FIN */
+        /* INFORMACION REFERENCIA INICIO */
+        $this->xml->startBranch('InformacionReferencia');
+        $this->xml->addNode('TipoDoc', $infoRefeTipoDoc);
+        $this->xml->addNode('Numero', $infoRefeNumero);
+        $this->xml->addNode('FechaEmision', $infoRefeFechaEmision);
+        $this->xml->addNode('Codigo', $infoRefeCodigo);
+        $this->xml->addNode('Razon', $infoRefeRazon);
+        $this->xml->endBranch();
+        /* INFORMACION REFERENCIA FIN */
+        /* NORMATIVA INICIO */
+        $this->xml->startBranch('Normativa');
+        $this->xml->addNode('NumeroResolucion', 'DGT-R-48-2016');
+        $this->xml->addNode('FechaResolucion', '20-02-2017 08:05:00');
+        $this->xml->endBranch();
+        /* NORMATIVA FIN */
+
         if ($otros != '' && $otrosType != '')
         {
             $tipos = array("Otros", "OtroTexto", "OtroContenido");
+
             if (in_array($otrosType, $tipos))
             {
-                $xmlString .= '
-                    <Otros>
-                <' . $otrosType . '>' . $otros . '</' . $otrosType . '>
-                </Otros>';
+                /* OTROS INICIO */
+                $this->xml->startBranch('Otros');
+                $this->xml->addNode($otrosType, $otros);
+                $this->xml->endBranch();
+                /* OTROS FIN */
             }
         }
-        $xmlString .= '
-        </NotaCreditoElectronica>';
-    
+        // Genera XML
+        $xml_string = $this->xml->getXml(false);
+
         $arrayResp = array(
             "clave" => $clave,
-            "xml"   => base64_encode($xmlString)
+            "xml"   => base64_encode($xml_string)
         );
     
         $this->set_response($arrayResp, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
@@ -665,7 +736,7 @@ class Hacienda extends REST_Controller {
         $clave                  = $this->post("clave");
         $consecutivo            = $this->post("consecutivo");
         $fechaEmision           = $this->post("fecha_emision");
-    
+
         // Datos emisor
         $emisorNombre           = $this->post("emisor_nombre");
         $emisorTipoIdentif      = $this->post("emisor_tipo_indetif");
@@ -725,217 +796,253 @@ class Hacienda extends REST_Controller {
     
         // Detalles de la compra
         $detalles               = json_decode($this->post("detalles"));
-    
-        $xmlString = '<?xml version="1.0" encoding="utf-8"?>
-        <NotaDebitoElectronica xmlns="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/notaDebitoElectronica" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/notaDebitoElectronica NotaDebitoElectronica_V4.2.xsd">
-        <Clave>' . $clave . '</Clave>
-        <NumeroConsecutivo>' . $consecutivo . '</NumeroConsecutivo>
-        <FechaEmision>' . $fechaEmision . '</FechaEmision>
-        <Emisor>
-            <Nombre>' . $emisorNombre . '</Nombre>
-            <Identificacion>
-                <Tipo>' . $emisorTipoIdentif . '</Tipo>
-                <Numero>' . $emisorNumIdentif . '</Numero>
-            </Identificacion>
-            <NombreComercial>' . $nombreComercial . '</NombreComercial>';
-    
+
+        // Carga la librería XML
+        $this->load->library('xml');
+
+        $this->xml->setRootName('NotaDebitoElectronica');
+        $this->xml->setAttributes(array(
+            'xmlns'     => 'https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/notaDebitoElectronica',
+            'xmlns:xsd' => 'http://www.w3.org/2001/XMLSchema',
+            'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance'
+        ));
+
+        $this->xml->initiate();
+
+        $this->xml->addNode('Clave', $clave);
+        $this->xml->addNode('NumeroConsecutivo', $consecutivo);
+        $this->xml->addNode('FechaEmision', $fechaEmision);
+
+        /* EMISOR INICIO */
+        $this->xml->startBranch('Emisor');
+        $this->xml->addNode('Nombre', $emisorNombre);
+        /* IDENTIFICACION INICIO */
+        $this->xml->startBranch('Identificacion');
+        $this->xml->addNode('Tipo', $emisorTipoIdentif);
+        $this->xml->addNode('Numero', $emisorNumIdentif);
+        $this->xml->endBranch();
+        /* IDENTIFICACION FIN */
+
+        $this->xml->addNode('NombreComercial', $nombreComercial);
+
         if ($emisorProv != '' && $emisorCanton != '' && $emisorDistrito != '' && $emisorOtrasSenas != '')
         {
-            $xmlString .= '
-            <Ubicacion>
-                <Provincia>' . $emisorProv . '</Provincia>
-                <Canton>' . $emisorCanton . '</Canton>
-                <Distrito>' . $emisorDistrito . '</Distrito>';
-            if ($emisorBarrio != '')
-                $xmlString .= '<Barrio>' . $emisorBarrio . '</Barrio>';
-            $xmlString .= '
-                    <OtrasSenas>' . $emisorOtrasSenas . '</OtrasSenas>
-                </Ubicacion>';
+            /* UBICACION INICIO */
+            $this->xml->startBranch('Ubicacion');
+            $this->xml->addNode('Provincia', $emisorProv);
+            $this->xml->addNode('Canton', $emisorCanton);
+            $this->xml->addNode('Distrito', $emisorDistrito);
+            if ($emisorBarrio != ''){
+                $this->xml->addNode('Barrio', $emisorBarrio);
+            }
+            $this->xml->addNode('OtrasSenas', $emisorOtrasSenas);
+            $this->xml->endBranch();
+            /* UBICACION FIN */
         }
-    
+
         if ($emisorCodPaisTel != '' && $emisorTel != '')
         {
-            $xmlString .= '
-            <Telefono>
-                <CodigoPais>' . $emisorCodPaisTel . '</CodigoPais>
-                <NumTelefono>' . $emisorTel . '</NumTelefono>
-            </Telefono>';
+            /* TELEFONO INICIO */
+            $this->xml->startBranch('Telefono');
+            $this->xml->addNode('CodigoPais', $emisorCodPaisTel);
+            $this->xml->addNode('NumTelefono', $emisorTel);
+            $this->xml->endBranch();
+            /* TELEFONO FIN */
         }
-    
+
         if ($emisorCodPaisFax != '' && $emisorFax != '')
         {
-            $xmlString .= '
-            <Fax>
-                <CodigoPais>' . $emisorCodPaisFax . '</CodigoPais>
-                <NumTelefono>' . $emisorFax . '</NumTelefono>
-            </Fax>';
+            /* FAX INICIO */
+            $this->xml->startBranch('Fax');
+            $this->xml->addNode('CodigoPais', $emisorCodPaisFax);
+            $this->xml->addNode('NumTelefono', $emisorFax);
+            $this->xml->endBranch();
+            /* FAX FIN */
         }
-    
-        $xmlString .= '<CorreoElectronico>' . $emisorEmail . '</CorreoElectronico>
-        </Emisor>';
+
+        $this->xml->addNode('CorreoElectronico', $emisorEmail);
+        $this->xml->endBranch();
+        /* EMISOR FIN */
     
         if ($omitir_receptor != 'true')
         {
-            $xmlString .= '<Receptor>
-                <Nombre>' . $receptorNombre . '</Nombre>';
-    
+            /* RECEPTOR INICIO */
+            $this->xml->startBranch('Receptor');
+            $this->xml->addNode('Nombre', $receptorNombre);
+
             if ($receptorTipoIdentif == '05')
             {
                 if ($receptorTipoIdentif != '' &&  $receptorNumIdentif != '')
                 {
-                    $xmlString .= '<IdentificacionExtranjero>'
-                            . $receptorNumIdentif 
-                            . ' </IdentificacionExtranjero>';
+                    $this->xml->addNode('IdentificacionExtranjero', $receptorNumIdentif);
                 }
             }
             else
             {
                 if ($receptorTipoIdentif != '' && $receptorNumIdentif != '')
                 {
-                    $xmlString .= '<Identificacion>
-                        <Tipo>' . $receptorTipoIdentif . '</Tipo>
-                        <Numero>' . $receptorNumIdentif . '</Numero>
-                    </Identificacion>';
+                    /* IDENTIFICACION INICIO */
+                    $this->xml->startBranch('Identificacion');
+                    $this->xml->addNode('Tipo', $receptorTipoIdentif);
+                    $this->xml->addNode('Numero', $receptorNumIdentif);
+                    $this->xml->endBranch();
+                    /* IDENTIFICACION FIN */
                 }
     
                 if ($receptorProvincia != '' && $receptorCanton != '' && $receptorDistrito != '' && $receptorOtrasSenas != '')
                 {
-                    $xmlString .= '
-                        <Ubicacion>
-                            <Provincia>' . $receptorProvincia . '</Provincia>
-                            <Canton>' . $receptorCanton . '</Canton>
-                            <Distrito>' . $receptorDistrito . '</Distrito>';
-                    if ($receptorBarrio != '')
-                        $xmlString .= '<Barrio>' . $receptorBarrio . '</Barrio>';
-                    $xmlString .= '
-                            <OtrasSenas>' . $receptorOtrasSenas . '</OtrasSenas>
-                        </Ubicacion>';
+                    /* UBICACION INICIO */
+                    $this->xml->startBranch('Ubicacion');
+                    $this->xml->addNode('Provincia', $receptorProvincia);
+                    $this->xml->addNode('Canton', $receptorCanton);
+                    $this->xml->addNode('Distrito', $receptorDistrito);
+                    if ($receptorBarrio != ''){
+                        $this->xml->addNode('Barrio', $receptorBarrio);
+                    }
+                    $this->xml->addNode('OtrasSenas', $receptorOtrasSenas);
+                    $this->xml->endBranch();
+                    /* UBICACION FIN */
                 }
             }
     
             if ($receptorCodPaisTel != '' && $receptorTel != '')
             {
-                $xmlString .= '<Telefono>
-                                  <CodigoPais>' . $receptorCodPaisTel . '</CodigoPais>
-                                  <NumTelefono>' . $receptorTel . '</NumTelefono>
-                        </Telefono>';
+                /* TELEFONO INICIO */
+                $this->xml->startBranch('Telefono');
+                $this->xml->addNode('CodigoPais', $receptorCodPaisTel);
+                $this->xml->addNode('NumTelefono', $receptorTel);
+                $this->xml->endBranch();
+                /* TELEFONO FIN */
             }
     
             if ($receptorCodPaisFax != '' && $receptorFax != '')
             {
-                $xmlString .= '<Fax>
-                                  <CodigoPais>' . $receptorCodPaisFax . '</CodigoPais>
-                                 <NumTelefono>' . $receptorFax . '</NumTelefono>
-                        </Fax>';
+                /* FAX INICIO */
+                $this->xml->startBranch('Fax');
+                $this->xml->addNode('CodigoPais', $receptorCodPaisFax);
+                $this->xml->addNode('NumTelefono', $receptorFax);
+                $this->xml->endBranch();
+                /* FAX FIN */
             }
-    
-            if ($receptorEmail != '')
-                $xmlString .= '<CorreoElectronico>' . $receptorEmail . '</CorreoElectronico>';
-    
-            $xmlString .= '</Receptor>';
+            if ($receptorEmail != ''){
+                $this->xml->addNode('CorreoElectronico', $receptorEmail);
+            }
+            $this->xml->endBranch();
+            /* RECEPTOR FIN */
         }
     
-        $xmlString .= '
-        <CondicionVenta>' . $condVenta . '</CondicionVenta>
-        <PlazoCredito>' . $plazoCredito . '</PlazoCredito>
-        <MedioPago>' . $medioPago . '</MedioPago>
-        <DetalleServicio>';
-
+        $this->xml->addNode('CondicionVenta', $condVenta);
+        $this->xml->addNode('PlazoCredito', $plazoCredito);
+        $this->xml->addNode('MedioPago', $medioPago);
+        $this->xml->startBranch('DetalleServicio');
         $l = 1;
         foreach ($detalles as $d)
         {
-            $xmlString .= '<LineaDetalle>
-                <NumeroLinea>' . $l . '</NumeroLinea>
-                <Cantidad>' . $d->cantidad . '</Cantidad>
-                <UnidadMedida>' . $d->unidadMedida . '</UnidadMedida>
-                <Detalle>' . $d->detalle . '</Detalle>
-                <PrecioUnitario>' . $d->precioUnitario . '</PrecioUnitario>
-                <MontoTotal>' . $d->montoTotal . '</MontoTotal>';
-    
-            if (isset($d->montoDescuento) && $d->montoDescuento != "")
-                $xmlString .= '<MontoDescuento>' . $d->montoDescuento . '</MontoDescuento>';
-    
-            if (isset($d->naturalezaDescuento) && $d->naturalezaDescuento != "")
-                $xmlString .= '<NaturalezaDescuento>' . $d->naturalezaDescuento . '</NaturalezaDescuento>';
-    
-            $xmlString .= '<SubTotal>' . $d->subtotal . '</SubTotal>';
+            /* LINEA DETALLE INICIO */
+            $this->xml->startBranch('LineaDetalle');
+            $this->xml->addNode('NumeroLinea', $l);
+            $this->xml->addNode('Cantidad', $d->cantidad);
+            $this->xml->addNode('UnidadMedida', $d->unidadMedida);
+            $this->xml->addNode('Detalle', $d->detalle);
+            $this->xml->addNode('PrecioUnitario', $d->precioUnitario);
+            $this->xml->addNode('MontoTotal', $d->montoTotal);
+
+            if (isset($d->montoDescuento) && $d->montoDescuento != ""){
+              $this->xml->addNode('MontoDescuento', $d->montoDescuento);    
+            }
+
+            if (isset($d->naturalezaDescuento) && $d->naturalezaDescuento != ""){
+                $this->xml->addNode('NaturalezaDescuento', $d->naturalezaDescuento);
+            }
+            
+            $this->xml->addNode('SubTotal', $d->subtotal);
     
             if (isset($d->impuesto) && $d->impuesto != "")
             {
                 foreach ($d->impuesto as $i)
                 {
-                    $xmlString .= '<Impuesto>
-                    <Codigo>' . $i->codigo . '</Codigo>
-                    <Tarifa>' . $i->tarifa . '</Tarifa>
-                    <Monto>' . $i->monto . '</Monto>';
+                    /* IMPUESTOS INICIO */
+                    $this->xml->startBranch('Impuesto');
+                    $this->xml->addNode('Codigo', $i->codigo);
+                    $this->xml->addNode('Tarifa', $i->tarifa);
+                    $this->xml->addNode('Monto', $i->monto);
     
                     if (isset($i->exoneracion) && $i->exoneracion != "")
                     {
-                        $xmlString .= '
-                        <Exoneracion>
-                            <TipoDocumento>' . $i->exoneracion->tipoDocumento . '</TipoDocumento>
-                            <NumeroDocumento>' . $i->exoneracion->numeroDocumento . '</NumeroDocumento>
-                            <NombreInstitucion>' . $i->exoneracion->nombreInstitucion . '</NombreInstitucion>
-                            <FechaEmision>' . $i->exoneracion->fechaEmision . '</FechaEmision>
-                            <MontoImpuesto>' . $i->exoneracion->montoImpuesto . '</MontoImpuesto>
-                            <PorcentajeCompra>' . $i->exoneracion->porcentajeCompra . '</PorcentajeCompra>
-                        </Exoneracion>';
+                        /* EXONERACIONES INICIO */
+                        $this->xml->startBranch('Exoneracion');
+                        $this->xml->addNode('TipoDocumento', $i->exoneracion->tipoDocumento);
+                        $this->xml->addNode('NumeroDocumento', $i->exoneracion->numeroDocumento);
+                        $this->xml->addNode('NombreInstitucion', $i->exoneracion->nombreInstitucion);
+                        $this->xml->addNode('FechaEmision', $i->exoneracion->fechaEmision);
+                        $this->xml->addNode('MontoImpuesto', $i->exoneracion->montoImpuesto);
+                        $this->xml->addNode('PorcentajeCompra', $i->exoneracion->porcentajeCompra);
+                        $this->xml->endBranch();
+                        /* EXONERACIONES FIN */
                     }
-    
-                    $xmlString .= '</Impuesto>';
+                    $this->xml->endBranch();
+                    /* IMPUESTOS FIN */
                 }
             }
-    
-            $xmlString .= '<MontoTotalLinea>' . $d->montoTotalLinea . '</MontoTotalLinea>';
-            $xmlString .= '</LineaDetalle>';
+            $this->xml->addNode('MontoTotalLinea', $d->montoTotalLinea);
+            $this->xml->endBranch();
             $l++;
+            /* LINEA DETALLE FIN */
         }
-    
-        $xmlString .= '</DetalleServicio>
-        <ResumenFactura>
-            <CodigoMoneda>' . $codMoneda . '</CodigoMoneda>
-            <TipoCambio>' . $tipoCambio . '</TipoCambio>
-            <TotalServGravados>' . $totalServGravados . '</TotalServGravados>
-            <TotalServExentos>' . $totalServExentos . '</TotalServExentos>
-            <TotalMercanciasGravadas>' . $totalMercGravadas . '</TotalMercanciasGravadas>
-            <TotalMercanciasExentas>' . $totalMercExentas . '</TotalMercanciasExentas>
-            <TotalGravado>' . $totalGravados . '</TotalGravado>
-            <TotalExento>' . $totalExentos . '</TotalExento>
-            <TotalVenta>' . $totalVentas . '</TotalVenta>
-            <TotalDescuentos>' . $totalDescuentos . '</TotalDescuentos>
-            <TotalVentaNeta>' . $totalVentasNeta . '</TotalVentaNeta>
-            <TotalImpuesto>' . $totalImp . '</TotalImpuesto>
-            <TotalComprobante>' . $totalComprobante . '</TotalComprobante>
-        </ResumenFactura>
-        <InformacionReferencia>
-            <TipoDoc>' . $infoRefeTipoDoc . '</TipoDoc>
-            <Numero>' . $infoRefeNumero . '</Numero>
-            <FechaEmision>' . $infoRefeFechaEmision . '</FechaEmision>
-            <Codigo>' . $infoRefeCodigo . '</Codigo>
-            <Razon>' . $infoRefeRazon . '</Razon>
-        </InformacionReferencia>
-        <Normativa>
-            <NumeroResolucion>DGT-R-48-2016</NumeroResolucion>
-            <FechaResolucion>07-10-2016 08:00:00</FechaResolucion>
-        </Normativa>';
+        $this->xml->endBranch();
+        /* DETALLE SERVICIO FIN */
+        /* RESUMEN FACTURA INICIO */
+        $this->xml->startBranch('ResumenFactura');
+        $this->xml->addNode('CodigoMoneda', $codMoneda);
+        $this->xml->addNode('TipoCambio', $tipoCambio);
+        $this->xml->addNode('TotalServGravados', $totalServGravados);
+        $this->xml->addNode('TotalServExentos', $totalServExentos);
+        $this->xml->addNode('TotalMercanciasGravadas', $totalMercGravadas);
+        $this->xml->addNode('TotalMercanciasExentas', $totalMercExentas);
+        $this->xml->addNode('TotalGravado', $totalGravados);
+        $this->xml->addNode('TotalExento', $totalExentos);
+        $this->xml->addNode('TotalVenta', $totalVentas);
+        $this->xml->addNode('TotalDescuentos', $totalDescuentos);
+        $this->xml->addNode('TotalVentaNeta', $totalVentasNeta);
+        $this->xml->addNode('TotalImpuesto', $totalImp);
+        $this->xml->addNode('TotalComprobante', $totalComprobante);
+        $this->xml->endBranch();
+        /* RESUMEN FACTURA FIN */
+        /* INFORMACION REFERENCIA INICIO */
+        $this->xml->startBranch('InformacionReferencia');
+        $this->xml->addNode('TipoDoc', $infoRefeTipoDoc);
+        $this->xml->addNode('Numero', $infoRefeNumero);
+        $this->xml->addNode('FechaEmision', $infoRefeFechaEmision);
+        $this->xml->addNode('Codigo', $infoRefeCodigo);
+        $this->xml->addNode('Razon', $infoRefeRazon);
+        $this->xml->endBranch();
+        /* INFORMACION REFERENCIA FIN */
+        /* NORMATIVA INICIO */
+        $this->xml->startBranch('Normativa');
+        $this->xml->addNode('NumeroResolucion', 'DGT-R-48-2016');
+        $this->xml->addNode('FechaResolucion', '20-02-2017 08:05:00');
+        $this->xml->endBranch();
+        /* NORMATIVA FIN */
+
         if ($otros != '' && $otrosType != '')
         {
             $tipos = array("Otros", "OtroTexto", "OtroContenido");
+
             if (in_array($otrosType, $tipos))
             {
-                $xmlString .= '
-                    <Otros>
-                <' . $otrosType . '>' . $otros . '</' . $otrosType . '>
-                </Otros>';
+                /* OTROS INICIO */
+                $this->xml->startBranch('Otros');
+                $this->xml->addNode($otrosType, $otros);
+                $this->xml->endBranch();
+                /* OTROS FIN */
             }
         }
-    
-        $xmlString .= '
-            </NotaDebitoElectronica>';
-    
+        // Genera XML
+        $xml_string = $this->xml->getXml(false);
+
         $arrayResp = array(
             "clave" => $clave,
-            "xml" => base64_encode($xmlString)
+            "xml" => base64_encode($xml_string)
         );
 
         $this->set_response(array("resp" => $arrayResp), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
@@ -1005,145 +1112,175 @@ class Hacienda extends REST_Controller {
     
         // Detalles de la compra
         $detalles               = json_decode($this->post("detalles"));
-    
-        $xmlString = '<?xml version="1.0" encoding="utf-8"?>
-        <TiqueteElectronico xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/tiqueteElectronico" xsi:schemaLocation="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/tiqueteElectronico https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/tiqueteElectronico.xsd">
-        <Clave>' . $clave . '</Clave>
-        <NumeroConsecutivo>' . $consecutivo . '</NumeroConsecutivo>
-        <FechaEmision>' . $fechaEmision . '</FechaEmision>
-        <Emisor>
-            <Nombre>' . $emisorNombre . '</Nombre>
-            <Identificacion>
-                <Tipo>' . $emisorTipoIdentif . '</Tipo>
-                <Numero>' . $emisorNumIdentif . '</Numero>
-            </Identificacion>
-            <NombreComercial>' . $nombreComercial . '</NombreComercial>';
-    
+
+
+        // Carga la librería XML
+        $this->load->library('xml');
+
+        $this->xml->setRootName('TiqueteElectronico');
+        $this->xml->setAttributes(array(
+            'xmlns'     => 'https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/tiqueteElectronico',
+            'xmlns:xsd' => 'http://www.w3.org/2001/XMLSchema',
+            'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance'
+        ));
+
+        $this->xml->initiate();
+
+        $this->xml->addNode('Clave', $clave);
+        $this->xml->addNode('NumeroConsecutivo', $consecutivo);
+        $this->xml->addNode('FechaEmision', $fechaEmision);
+
+        /* EMISOR INICIO */
+        $this->xml->startBranch('Emisor');
+        $this->xml->addNode('Nombre', $emisorNombre);
+        /* IDENTIFICACION INICIO */
+        $this->xml->startBranch('Identificacion');
+        $this->xml->addNode('Tipo', $emisorTipoIdentif);
+        $this->xml->addNode('Numero', $emisorNumIdentif);
+        $this->xml->endBranch();
+        /* IDENTIFICACION FIN */
+
+        $this->xml->addNode('NombreComercial', $nombreComercial);
+
         if ($emisorProv != '' && $emisorCanton != '' && $emisorDistrito != '' && $emisorOtrasSenas != '')
         {
-            $xmlString .= '
-            <Ubicacion>
-                <Provincia>' . $emisorProv . '</Provincia>
-                <Canton>' . $emisorCanton . '</Canton>
-                <Distrito>' . $emisorDistrito . '</Distrito>';
-            if ($emisorBarrio != '')
-                $xmlString .= '<Barrio>' . $emisorBarrio . '</Barrio>';
-            $xmlString .= '
-                    <OtrasSenas>' . $emisorOtrasSenas . '</OtrasSenas>
-                </Ubicacion>';
+            /* UBICACION INICIO */
+            $this->xml->startBranch('Ubicacion');
+            $this->xml->addNode('Provincia', $emisorProv);
+            $this->xml->addNode('Canton', $emisorCanton);
+            $this->xml->addNode('Distrito', $emisorDistrito);
+            if ($emisorBarrio != ''){
+                $this->xml->addNode('Barrio', $emisorBarrio);
+            }
+            $this->xml->addNode('OtrasSenas', $emisorOtrasSenas);
+            $this->xml->endBranch();
+            /* UBICACION FIN */
         }
-    
+
         if ($emisorCodPaisTel != '' && $emisorTel != '')
         {
-            $xmlString .= '
-            <Telefono>
-                <CodigoPais>' . $emisorCodPaisTel . '</CodigoPais>
-                <NumTelefono>' . $emisorTel . '</NumTelefono>
-            </Telefono>';
+            /* TELEFONO INICIO */
+            $this->xml->startBranch('Telefono');
+            $this->xml->addNode('CodigoPais', $emisorCodPaisTel);
+            $this->xml->addNode('NumTelefono', $emisorTel);
+            $this->xml->endBranch();
+            /* TELEFONO FIN */
         }
-    
+
         if ($emisorCodPaisFax != '' && $emisorFax != '')
         {
-            $xmlString .= '
-            <Fax>
-                <CodigoPais>' . $emisorCodPaisFax . '</CodigoPais>
-                <NumTelefono>' . $emisorFax . '</NumTelefono>
-            </Fax>';
+            /* FAX INICIO */
+            $this->xml->startBranch('Fax');
+            $this->xml->addNode('CodigoPais', $emisorCodPaisFax);
+            $this->xml->addNode('NumTelefono', $emisorFax);
+            $this->xml->endBranch();
+            /* FAX FIN */
         }
-    
-        $xmlString .= '<CorreoElectronico>' . $emisorEmail . '</CorreoElectronico>
-        </Emisor>';
-    
-        $xmlString .= '
-        <CondicionVenta>' . $condVenta . '</CondicionVenta>
-        <PlazoCredito>' . $plazoCredito . '</PlazoCredito>
-        <MedioPago>' . $medioPago . '</MedioPago>
-        <DetalleServicio>';
-    
+
+        $this->xml->addNode('CorreoElectronico', $emisorEmail);
+        $this->xml->endBranch();
+        /* EMISOR FIN */
+        $this->xml->addNode('CondicionVenta', $condVenta);
+        $this->xml->addNode('PlazoCredito', $plazoCredito);
+        $this->xml->addNode('MedioPago', $medioPago);
+        /* DETALLE SERVICIO INICIO */
+        $this->xml->startBranch('DetalleServicio');
         $l = 1;
         foreach ($detalles as $d)
         {
-            $xmlString .= '<LineaDetalle>
-                <NumeroLinea>' . $l . '</NumeroLinea>
-                <Cantidad>' . $d->cantidad . '</Cantidad>
-                <UnidadMedida>' . $d->unidadMedida . '</UnidadMedida>
-                <Detalle>' . $d->detalle . '</Detalle>
-                <PrecioUnitario>' . $d->precioUnitario . '</PrecioUnitario>
-                <MontoTotal>' . $d->montoTotal . '</MontoTotal>';
-    
-            if (isset($d->montoDescuento) && $d->montoDescuento != "")
-                $xmlString .= '<MontoDescuento>' . $d->montoDescuento . '</MontoDescuento>';
-    
-            if (isset($d->naturalezaDescuento) && $d->naturalezaDescuento != "")
-                $xmlString .= '<NaturalezaDescuento>' . $d->naturalezaDescuento . '</NaturalezaDescuento>';
-    
-            $xmlString .= '<SubTotal>' . $d->subtotal . '</SubTotal>';
+            /* LINEA DETALLE INICIO */
+            $this->xml->startBranch('LineaDetalle');
+            $this->xml->addNode('NumeroLinea', $l);
+            $this->xml->addNode('Cantidad', $d->cantidad);
+            $this->xml->addNode('UnidadMedida', $d->unidadMedida);
+            $this->xml->addNode('Detalle', $d->detalle);
+            $this->xml->addNode('PrecioUnitario', $d->precioUnitario);
+            $this->xml->addNode('MontoTotal', $d->montoTotal);
+
+            if (isset($d->montoDescuento) && $d->montoDescuento != ""){
+              $this->xml->addNode('MontoDescuento', $d->montoDescuento);    
+            }
+
+            if (isset($d->naturalezaDescuento) && $d->naturalezaDescuento != ""){
+                $this->xml->addNode('NaturalezaDescuento', $d->naturalezaDescuento);
+            }
+            
+            $this->xml->addNode('SubTotal', $d->subtotal);
     
             if (isset($d->impuesto) && $d->impuesto != "")
             {
                 foreach ($d->impuesto as $i)
                 {
-                    $xmlString .= '<Impuesto>
-                    <Codigo>' . $i->codigo . '</Codigo>
-                    <Tarifa>' . $i->tarifa . '</Tarifa>
-                    <Monto>' . $i->monto . '</Monto>';
+                    /* IMPUESTOS INICIO */
+                    $this->xml->startBranch('Impuesto');
+                    $this->xml->addNode('Codigo', $i->codigo);
+                    $this->xml->addNode('Tarifa', $i->tarifa);
+                    $this->xml->addNode('Monto', $i->monto);
     
                     if (isset($i->exoneracion) && $i->exoneracion != "")
                     {
-                        $xmlString .= '
-                        <Exoneracion>
-                            <TipoDocumento>' . $i->exoneracion->tipoDocumento . '</TipoDocumento>
-                            <NumeroDocumento>' . $i->exoneracion->numeroDocumento . '</NumeroDocumento>
-                            <NombreInstitucion>' . $i->exoneracion->nombreInstitucion . '</NombreInstitucion>
-                            <FechaEmision>' . $i->exoneracion->fechaEmision . '</FechaEmision>
-                            <MontoImpuesto>' . $i->exoneracion->montoImpuesto . '</MontoImpuesto>
-                            <PorcentajeCompra>' . $i->exoneracion->porcentajeCompra . '</PorcentajeCompra>
-                        </Exoneracion>';
+                        /* EXONERACIONES INICIO */
+                        $this->xml->startBranch('Exoneracion');
+                        $this->xml->addNode('TipoDocumento', $i->exoneracion->tipoDocumento);
+                        $this->xml->addNode('NumeroDocumento', $i->exoneracion->numeroDocumento);
+                        $this->xml->addNode('NombreInstitucion', $i->exoneracion->nombreInstitucion);
+                        $this->xml->addNode('FechaEmision', $i->exoneracion->fechaEmision);
+                        $this->xml->addNode('MontoImpuesto', $i->exoneracion->montoImpuesto);
+                        $this->xml->addNode('PorcentajeCompra', $i->exoneracion->porcentajeCompra);
+                        $this->xml->endBranch();
+                        /* EXONERACIONES FIN */
                     }
-    
-                    $xmlString .= '</Impuesto>';
+                    $this->xml->endBranch();
+                    /* IMPUESTOS FIN */
                 }
             }
-    
-            $xmlString .= '<MontoTotalLinea>' . $d->montoTotalLinea . '</MontoTotalLinea>';
-            $xmlString .= '</LineaDetalle>';
+            $this->xml->addNode('MontoTotalLinea', $d->montoTotalLinea);
+            $this->xml->endBranch();
             $l++;
+            /* LINEA DETALLE FIN */
         }
-    
-        $xmlString .= '</DetalleServicio>
-        <ResumenFactura>
-            <CodigoMoneda>' . $codMoneda . '</CodigoMoneda>
-            <TipoCambio>' . $tipoCambio . '</TipoCambio>
-            <TotalServGravados>' . $totalServGravados . '</TotalServGravados>
-            <TotalServExentos>' . $totalServExentos . '</TotalServExentos>
-            <TotalMercanciasGravadas>' . $totalMercGravadas . '</TotalMercanciasGravadas>
-            <TotalMercanciasExentas>' . $totalMercExentas . '</TotalMercanciasExentas>
-            <TotalGravado>' . $totalGravados . '</TotalGravado>
-            <TotalExento>' . $totalExentos . '</TotalExento>
-            <TotalVenta>' . $totalVentas . '</TotalVenta>
-            <TotalDescuentos>' . $totalDescuentos . '</TotalDescuentos>
-            <TotalVentaNeta>' . $totalVentasNeta . '</TotalVentaNeta>
-            <TotalImpuesto>' . $totalImp . '</TotalImpuesto>
-            <TotalComprobante>' . $totalComprobante . '</TotalComprobante>
-        </ResumenFactura>
-        <Normativa>
-            <NumeroResolucion>DGT-R-48-2016</NumeroResolucion>
-            <FechaResolucion>07-10-2016 08:00:00</FechaResolucion>
-        </Normativa>';
+        $this->xml->endBranch();
+        /* DETALLE SERVICIO FIN */
+        /* RESUMEN FACTURA INICIO */
+        $this->xml->startBranch('ResumenFactura');
+        $this->xml->addNode('CodigoMoneda', $codMoneda);
+        $this->xml->addNode('TipoCambio', $tipoCambio);
+        $this->xml->addNode('TotalServGravados', $totalServGravados);
+        $this->xml->addNode('TotalServExentos', $totalServExentos);
+        $this->xml->addNode('TotalMercanciasGravadas', $totalMercGravadas);
+        $this->xml->addNode('TotalMercanciasExentas', $totalMercExentas);
+        $this->xml->addNode('TotalGravado', $totalGravados);
+        $this->xml->addNode('TotalExento', $totalExentos);
+        $this->xml->addNode('TotalVenta', $totalVentas);
+        $this->xml->addNode('TotalDescuentos', $totalDescuentos);
+        $this->xml->addNode('TotalVentaNeta', $totalVentasNeta);
+        $this->xml->addNode('TotalImpuesto', $totalImp);
+        $this->xml->addNode('TotalComprobante', $totalComprobante);
+        $this->xml->endBranch();
+        /* RESUMEN FACTURA FIN */
+        /* NORMATIVA INICIO */
+        $this->xml->startBranch('Normativa');
+        $this->xml->addNode('NumeroResolucion', 'DGT-R-48-2016');
+        $this->xml->addNode('FechaResolucion', '20-02-2017 08:05:00');
+        $this->xml->endBranch();
+        /* NORMATIVA FIN */
+
         if ($otros != '' && $otrosType != '')
         {
             $tipos = array("Otros", "OtroTexto", "OtroContenido");
+
             if (in_array($otrosType, $tipos))
             {
-                $xmlString .= '
-                    <Otros>
-                <' . $otrosType . '>' . $otros . '</' . $otrosType . '>
-                </Otros>';
+                /* OTROS INICIO */
+                $this->xml->startBranch('Otros');
+                $this->xml->addNode($otrosType, $otros);
+                $this->xml->endBranch();
+                /* OTROS FIN */
             }
         }
-    
-        $xmlString .= '
-        </TiqueteElectronico>';
+        // Genera XML
+        $xml_string = $this->xml->getXml(false);
+
         $arrayResp = array(
             "clave" => $clave,
             "xml" => base64_encode($xmlString)
@@ -1157,6 +1294,7 @@ class Hacienda extends REST_Controller {
      */
     function mr_post()
     {
+
         $clave                          = $this->post("clave");                                      // d{50,50}
         // Datos vendedor = emisor
         $numeroCedulaEmisor             = $this->post("numero_cedula_emisor");                       // d{12,12} cedula fisica,juridica,NITE,DIMEX
@@ -1174,31 +1312,46 @@ class Hacienda extends REST_Controller {
         $numeroCedulaReceptor           = $this->post("numero_cedula_receptor");                     // d{12,12}cedula fisica, juridica, NITE, DIMEX del comprador
         $numeroCedulaReceptor           = str_pad($numeroCedulaReceptor, 12, "0", STR_PAD_LEFT);
 
-        $xmlString = '<?xml version="1.0" encoding="utf-8"?>
-        <MensajeReceptor xmlns="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/mensajeReceptor" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/mensajeReceptor MensajeReceptor_4.2.xsd">
-        <Clave>' . $clave . '</Clave>
-        <NumeroCedulaEmisor>' . $numeroCedulaEmisor . '</NumeroCedulaEmisor>
-        <FechaEmisionDoc>' . $fechaEmisionDoc . '</FechaEmisionDoc>
-        <Mensaje>' . $mensaje . '</Mensaje>';
-        if (!empty($detalleMensaje))
-            $xmlString .= '<DetalleMensaje>' . $detalleMensaje . '</DetalleMensaje>';
+        // Carga la librería XML
+        $this->load->library('xml');
 
-        if (!empty($montoTotalImpuesto))
-            $xmlString .= '<MontoTotalImpuesto>' . $montoTotalImpuesto . '</MontoTotalImpuesto>';
+        $this->xml->setRootName('MensajeReceptor');
+        $this->xml->setAttributes(array(
+            'xmlns' => 'https://tribunet.hacienda.go.cr/docs/esquemas/2017/v4.2/mensajeReceptor',
+            'xmlns:ds' => 'http://www.w3.org/2000/09/xmldsig#',
+            'xmlns:xsd' => 'http://www.w3.org/2001/XMLSchema',
+            'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance'
+        ));
 
-        $xmlString .= '<TotalFactura>' . $totalFactura . '</TotalFactura>
-        <NumeroCedulaReceptor>' . $numeroCedulaReceptor . '</NumeroCedulaReceptor>
-        <NumeroConsecutivoReceptor>' . $numeroConsecutivoReceptor . '</NumeroConsecutivoReceptor>';
+        $this->xml->initiate();
 
-        $xmlString .= '</MensajeReceptor>';
+        $this->xml->addNode('clave', $clave);
+        $this->xml->addNode('NumeroCedulaEmisor', $numeroCedulaEmisor);
+        $this->xml->addNode('FechaEmisionDoc', $fechaEmisionDoc);
+        $this->xml->addNode('Mensaje', $mensaje);
+
+        if (!empty($detalleMensaje)){
+            $this->xml->addNode('DetalleMensaje', $detalleMensaje);
+        }
+
+        if (!empty($montoTotalImpuesto)){
+            $this->xml->addNode('MontoTotalImpuesto', $montoTotalImpuesto);
+        }
+
+        $this->xml->addNode('TotalFactura', $totalFactura);
+        $this->xml->addNode('NumeroCedulaReceptor', $numeroCedulaReceptor);
+        $this->xml->addNode('NumeroConsecutivoReceptor', $numeroConsecutivoReceptor);
+
+        // Genera XML
+        $xml_string = $this->xml->getXml(false);
 
         $arrayResp = array(
             "clave" => $clave,
-            "xml"   => base64_encode($xmlString)
+            "xml"   => base64_encode($xml_string)
         );
 
 
-        $this->set_response(array("resp" => $arrayResp), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+        $this->set_response(array("resp" => $arrayResp), REST_Controller::HTTP_OK);
     }
  
     /**
