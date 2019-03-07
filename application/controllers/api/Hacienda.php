@@ -30,9 +30,9 @@ class Hacienda extends REST_Controller
         $this->load->helper('api_helper');
         // Configure limits on our controller methods
         // Ensure you have created the 'limits' table and enabled 'limits' within application/config/rest.php
-        //$this->methods['users_get']['limit'] = 500; // 500 requests per hour per user/key
-        //$this->methods['users_post']['limit'] = 100; // 100 requests per hour per user/key
-        //$this->methods['users_delete']['limit'] = 50; // 50 requests per hour per user/key
+        //$this->methods['index_get']['limit'] = 500; // 500 requests per hour per user/key
+        //$this->methods['consulta_post']['limit'] = 100; // 100 requests per hour per user/key
+        //$this->methods['fe_post']['limit'] = 50; // 50 requests per hour per user/key
     }
     
     public function index_get()
@@ -310,7 +310,7 @@ class Hacienda extends REST_Controller
             $this->xml->addNode('PrecioUnitario', $d->precioUnitario);
             $this->xml->addNode('MontoTotal', $d->montoTotal);
             
-            if (isset($d->montoDescuento) && $d->montoDescuento != "") {
+            if (isset($d->montoDescuento) && $d->montoDescuento != "" && $d->montoDescuento != 0) {
                 $this->xml->addNode('MontoDescuento', $d->montoDescuento);
             }
             
@@ -395,7 +395,7 @@ class Hacienda extends REST_Controller
         
         $respuesta = array(
             "clave" => $clave,
-            "xml" => base64_encode($xmlString)
+            "xml" => base64_encode($xml_string)
         );
         
         $this->set_response(array(
@@ -609,7 +609,7 @@ class Hacienda extends REST_Controller
             $this->xml->addNode('PrecioUnitario', $d->precioUnitario);
             $this->xml->addNode('MontoTotal', $d->montoTotal);
             
-            if (isset($d->montoDescuento) && $d->montoDescuento != "") {
+            if (isset($d->montoDescuento) && $d->montoDescuento != "" && $d->montoDescuento != 0) {
                 $this->xml->addNode('MontoDescuento', $d->montoDescuento);
             }
             
@@ -916,7 +916,7 @@ class Hacienda extends REST_Controller
             $this->xml->addNode('PrecioUnitario', $d->precioUnitario);
             $this->xml->addNode('MontoTotal', $d->montoTotal);
             
-            if (isset($d->montoDescuento) && $d->montoDescuento != "") {
+            if (isset($d->montoDescuento) && $d->montoDescuento != "" && $d->montoDescuento != 0) {
                 $this->xml->addNode('MontoDescuento', $d->montoDescuento);
             }
             
@@ -1021,7 +1021,7 @@ class Hacienda extends REST_Controller
     /**
      * Genera XML Ticket Electrónico
      */
-    function te_post()
+    public function te_post()
     {
         // Datos contribuyente
         $clave        = $this->post("clave");
@@ -1163,7 +1163,7 @@ class Hacienda extends REST_Controller
             $this->xml->addNode('PrecioUnitario', $d->precioUnitario);
             $this->xml->addNode('MontoTotal', $d->montoTotal);
             
-            if (isset($d->montoDescuento) && $d->montoDescuento != "") {
+            if (isset($d->montoDescuento) && $d->montoDescuento != "" && $d->montoDescuento != 0) {
                 $this->xml->addNode('MontoDescuento', $d->montoDescuento);
             }
             
@@ -1248,7 +1248,7 @@ class Hacienda extends REST_Controller
         
         $respuesta = array(
             "clave" => $clave,
-            "xml" => base64_encode($xmlString)
+            "xml" => base64_encode($xml_string)
         );
         
         $this->set_response(array(
@@ -1259,7 +1259,7 @@ class Hacienda extends REST_Controller
     /**
      * Genera XML Mensaje Receptor
      */
-    function mr_post()
+    public function mr_post()
     {
         
         $clave              = $this->post("clave"); // d{50,50}
@@ -1414,6 +1414,48 @@ class Hacienda extends REST_Controller
             $this->set_response($respuesta, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
         } else {
             $this->set_response(json_decode($respuesta), REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
+        }
+    }
+
+    public function envio_correo_get()
+    {
+        /*
+        * Configuramos los parámetros para enviar el email,
+        * las siguientes configuraciones es recomendable
+        * hacerlas en el fichero email.php dentro del directorio config,
+        * en este caso para hacer un ejemplo rápido lo hacemos
+        * en el propio controlador
+        */
+        $config = Array(
+            'protocol'  => 'smtp', //Indicamos el protocolo a utilizar
+            'smtp_host' => 'smtp.gmail.com', //El servidor de correo que utilizaremos
+            'smtp_port' => 587, //El puerto que utilizará el servidor smtp
+            'smtp_user' => 'luizcortesj@gmail.com', //Nuestro usuario
+            'smtp_pass' => '', //Nuestra contraseña
+            'mailtype'  => 'html',
+            'charset'  => 'utf-8', //El juego de caracteres a utilizar
+            'wordwrap'  => TRUE, //Permitimos que se puedan cortar palabras
+            'validate'  => TRUE //El email debe ser valido 
+        );
+		
+		/**
+		 * Falta trabajo por hacer
+		 */
+        $this->load->library('email', $config);
+        $this->email->set_newline("\r\n");
+        $this->email->from('emisor@email.com');
+        $this->email->to('receptor@email.com');
+        $this->email->subject("Factura Electronica");
+        $this->email->message("Envio de Factura Electronica.");
+        $this->email->attach("C:/facturas/00100001010000076511/");
+
+        if($this->email->send())
+        {
+            echo json_encode(array('resp' => 'Enviado'));
+        }
+        else
+        {
+           echo json_encode(array('resp' => 'Error al enviar correo'));
         }
     }
 }
